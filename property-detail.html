@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Property Details - DreamSpace Realty</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .section-padding {
+      padding: 60px 0;
+    }
+    .property-image {
+      width: 100%;
+      height: 400px;
+      object-fit: cover;
+    }
+    .property-details {
+      background-color: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    .feature-list {
+      list-style: none;
+      padding: 0;
+    }
+    .feature-list li {
+      margin-bottom: 10px;
+    }
+    .feature-list li i {
+      color: #0d6efd;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+  <div class="container">
+    <a class="navbar-brand" href="index.html">DreamSpace Realty</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="index.html#home">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.html#about">About Us</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.html#properties">Properties</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.html#renovating">Renovating</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.html#contact">Contact</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- Property Details Section -->
+<section class="section-padding" style="padding-top: 100px;">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-8">
+        <img id="propertyImage" src="" class="property-image rounded mb-4" alt="Property Image">
+        <div class="property-details">
+          <h2 id="propertyTitle" class="mb-4"></h2>
+          <p id="propertyDescription" class="mb-4"></p>
+          <h4>Features</h4>
+          <ul id="propertyFeatures" class="feature-list"></ul>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <h3 class="card-title">Property Information</h3>
+            <p class="card-text"><strong>Price:</strong> <span id="propertyPrice"></span></p>
+            <p class="card-text"><strong>Location:</strong> <span id="propertyLocation"></span></p>
+            <p class="card-text"><strong>Size:</strong> <span id="propertySize"></span></p>
+            <p class="card-text"><strong>Year Built:</strong> <span id="propertyYear"></span></p>
+            <button class="btn btn-primary w-100 mt-3">Schedule a Viewing</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="bg-dark text-white text-center py-3">
+  &copy; 2025 DreamSpace Realty. All rights reserved.
+</footer>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Property data
+  const properties = {
+    'modern-villa': {
+      title: 'Modern Villa',
+      image: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7',
+      description: 'A stunning modern villa with panoramic views and luxurious amenities. Perfect for those seeking a contemporary lifestyle with all the comforts of modern living.',
+      price: '$650,000',
+      location: '123 Luxury Lane, Beverly Hills',
+      size: '3,500 sq ft',
+      year: '2020',
+      features: [
+        '3 Bedrooms',
+        '2 Bathrooms',
+        'Swimming Pool',
+        'Smart Home System',
+        'Garden',
+        'Garage'
+      ]
+    },
+    'urban-apartment': {
+      title: 'Urban Apartment',
+      image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c',
+      description: 'Stylish urban apartment in the heart of the city. Features modern design and convenient access to all city amenities.',
+      price: '$420,000',
+      location: '456 Downtown Ave, City Center',
+      size: '1,200 sq ft',
+      year: '2018',
+      features: [
+        '2 Bedrooms',
+        '1 Bathroom',
+        'City View',
+        'Fitness Center',
+        'Concierge',
+        'Parking'
+      ]
+    },
+    'suburban-home': {
+      title: 'Suburban Home',
+      image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c',
+      description: 'Spacious family home in a quiet suburban neighborhood. Perfect for growing families with excellent schools nearby.',
+      price: '$530,000',
+      location: '789 Suburban St, Green Valley',
+      size: '2,800 sq ft',
+      year: '2015',
+      features: [
+        '4 Bedrooms',
+        '3 Bathrooms',
+        'Large Garden',
+        'Garage',
+        'Basement',
+        'Deck'
+      ]
+    }
+  };
+
+  // Get property ID from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const propertyId = urlParams.get('id');
+
+  // Display property details
+  if (propertyId && properties[propertyId]) {
+    const property = properties[propertyId];
+    
+    document.getElementById('propertyTitle').textContent = property.title;
+    document.getElementById('propertyImage').src = property.image;
+    document.getElementById('propertyDescription').textContent = property.description;
+    document.getElementById('propertyPrice').textContent = property.price;
+    document.getElementById('propertyLocation').textContent = property.location;
+    document.getElementById('propertySize').textContent = property.size;
+    document.getElementById('propertyYear').textContent = property.year;
+
+    const featuresList = document.getElementById('propertyFeatures');
+    property.features.forEach(feature => {
+      const li = document.createElement('li');
+      li.innerHTML = `<i class="fas fa-check"></i> ${feature}`;
+      featuresList.appendChild(li);
+    });
+  } else {
+    // Redirect to home page if property not found
+    window.location.href = 'index.html';
+  }
+</script>
+</body>
+</html> 
