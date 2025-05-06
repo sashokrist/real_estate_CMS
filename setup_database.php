@@ -2,7 +2,7 @@
 try {
     // Connect to MySQL without selecting a database
     $pdo = new PDO(
-        'mysql:host=localhost',
+       'mysql:host=localhost;charset=utf8',
         'root',
         '',
         [

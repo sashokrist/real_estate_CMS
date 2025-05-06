@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bg">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Property Details - DreamSpace Realty</title>
+  <title>Детайли за имота - DreamSpace Realty</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <style>
@@ -31,60 +31,19 @@
       color: #0d6efd;
       margin-right: 10px;
     }
-    .language-selector {
-      margin-left: 15px;
-    }
-    .language-selector select {
-      background-color: transparent;
-      color: white;
-      border: 1px solid white;
-      padding: 5px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .language-selector select option {
-      background-color: #343a40;
-      color: white;
-    }
-    .navbar {
-      z-index: 1000;
-    }
-    .navbar-nav {
-      align-items: center;
-    }
-    .nav-link {
-      color: rgba(255, 255, 255, 0.8) !important;
-    }
-    .nav-link:hover {
-      color: white !important;
-    }
-    #google_translate_element {
-      display: none;
-    }
-    .goog-te-banner-frame {
-      display: none !important;
-    }
-    .goog-te-menu-value:hover {
-      text-decoration: none !important;
-    }
-    .goog-te-gadget {
-      color: transparent !important;
-    }
   </style>
-  <!-- Add Google Translate Script -->
-  <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </head>
 <body>
 
 <?php
-// Database connection
+// Връзка с базата данни
 $db = new mysqli('localhost', 'root', '', 'real_estate');
 
 if ($db->connect_error) {
-    die("Connection failed: " . $db->connect_error);
+    die("Възникна грешка при свързването: " . $db->connect_error);
 }
 
-// Get property ID from URL
+// Получаване на ID на имота от URL
 $propertyId = isset($_GET['id']) ? $_GET['id'] : null;
 
 if (!$propertyId) {
@@ -92,7 +51,7 @@ if (!$propertyId) {
     exit();
 }
 
-// Fetch property details
+// Извличане на детайли за имота
 $stmt = $db->prepare("SELECT * FROM properties WHERE id = ?");
 $stmt->bind_param("s", $propertyId);
 $stmt->execute();
@@ -104,7 +63,7 @@ if (!$property) {
     exit();
 }
 
-// Fetch property features
+// Извличане на характеристики на имота
 $stmt = $db->prepare("SELECT feature FROM property_features WHERE property_id = ?");
 $stmt->bind_param("s", $propertyId);
 $stmt->execute();
@@ -115,35 +74,26 @@ while ($row = $features_result->fetch_assoc()) {
 }
 ?>
 
-<!-- Navbar -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top" data-translate="false">
+<!-- Навигация -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
   <div class="container">
-    <a class="navbar-brand" href="index.php" data-translate="false">DreamSpace Realty</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" data-translate="false">
+    <a class="navbar-brand" href="index.php">DreamSpace Realty</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
       <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="collapse navbar-collapse" id="navMenu" data-translate="false">
-      <ul class="navbar-nav ms-auto" data-translate="false">
-        <li class="nav-item" data-translate="false"><a class="nav-link" href="index.php#home">Home</a></li>
-        <li class="nav-item" data-translate="false"><a class="nav-link" href="index.php#about">About Us</a></li>
-        <li class="nav-item" data-translate="false"><a class="nav-link" href="index.php#properties">Properties</a></li>
-        <li class="nav-item" data-translate="false"><a class="nav-link" href="index.php#renovating">Renovating</a></li>
-        <li class="nav-item" data-translate="false"><a class="nav-link" href="index.php#contact">Contact</a></li>
-        <li class="nav-item language-selector" data-translate="false">
-          <select id="languageSelect" onchange="changeLanguage(this.value)" data-translate="false">
-            <option value="en" data-translate="false">English</option>
-            <option value="bg" data-translate="false">Български</option>
-          </select>
-        </li>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="index.php#home">Начало</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.php#about">За нас</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.php#properties">Имоти</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.php#renovating">Реновации</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.php#contact">Контакт</a></li>
       </ul>
     </div>
   </div>
 </nav>
 
-<!-- Google Translate Element -->
-<div id="google_translate_element"></div>
-
-<!-- Property Details Section -->
+<!-- Секция с детайли за имота -->
 <section class="section-padding" style="padding-top: 100px;">
   <div class="container">
     <div class="row">
@@ -152,7 +102,7 @@ while ($row = $features_result->fetch_assoc()) {
         <div class="property-details">
           <h2 class="mb-4"><?php echo htmlspecialchars($property['title']); ?></h2>
           <p class="mb-4"><?php echo htmlspecialchars($property['description']); ?></p>
-          <h4>Features</h4>
+          <h4>Характеристики</h4>
           <ul class="feature-list">
             <?php foreach ($features as $feature): ?>
               <li><i class="fas fa-check"></i> <?php echo htmlspecialchars($feature); ?></li>
@@ -163,12 +113,12 @@ while ($row = $features_result->fetch_assoc()) {
       <div class="col-md-4">
         <div class="card">
           <div class="card-body">
-            <h3 class="card-title">Property Information</h3>
-            <p class="card-text"><strong>Price:</strong> <?php echo htmlspecialchars($property['price']); ?></p>
-            <p class="card-text"><strong>Location:</strong> <?php echo htmlspecialchars($property['location']); ?></p>
-            <p class="card-text"><strong>Size:</strong> <?php echo htmlspecialchars($property['size']); ?></p>
-            <p class="card-text"><strong>Year Built:</strong> <?php echo htmlspecialchars($property['year_built']); ?></p>
-            <button class="btn btn-primary w-100 mt-3">Schedule a Viewing</button>
+            <h3 class="card-title">Информация за имота</h3>
+            <p class="card-text"><strong>Цена:</strong> <?php echo htmlspecialchars($property['price']); ?></p>
+            <p class="card-text"><strong>Локация:</strong> <?php echo htmlspecialchars($property['location']); ?></p>
+            <p class="card-text"><strong>Размер:</strong> <?php echo htmlspecialchars($property['size']); ?></p>
+            <p class="card-text"><strong>Година на строеж:</strong> <?php echo htmlspecialchars($property['year_built']); ?></p>
+            <button class="btn btn-primary w-100 mt-3">Запазете оглед</button>
           </div>
         </div>
       </div>
@@ -178,7 +128,7 @@ while ($row = $features_result->fetch_assoc()) {
 
 <!-- Footer -->
 <footer class="bg-dark text-white text-center py-3">
-  &copy; 2025 DreamSpace Realty. All rights reserved.
+  &copy; 2025 DreamSpace Realty. Всички права запазени.
 </footer>
 
 <!-- Scripts -->

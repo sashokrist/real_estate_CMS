@@ -8,31 +8,72 @@ if (!isset($_SESSION['admin'])) {
     exit();
 }
 
+$uploadDir = __DIR__ . '/uploads/';
+if (!is_dir($uploadDir)) {
+    mkdir($uploadDir, 0777, true);
+}
+
 // Handle form submission
+function getPostValue($key, $default = '') {
+    return isset($_POST[$key]) ? trim($_POST[$key]) : $default;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
         switch ($_POST['action']) {
+
+            // === ADD PROPERTY ===
             case 'add':
                 try {
                     $pdo->beginTransaction();
-                    
-                    // Insert property
-                    $stmt = $pdo->prepare("INSERT INTO properties (id, title, image_url, description, price, bedrooms, bathrooms, location, size, year_built) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            
                     $propertyId = uniqid('prop_');
+            
+                    // === Handle image upload ===
+                    $uploadDir = 'uploads/';
+                    $imagePath = '';
+            
+                    if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+                        $imageTmp = $_FILES['image']['tmp_name'];
+                        $imageName = basename($_FILES['image']['name']);
+                        $imageExt = pathinfo($imageName, PATHINFO_EXTENSION);
+                        $newImageName = uniqid('img_') . '.' . $imageExt;
+                        $targetPath = $uploadDir . $newImageName;
+            
+                        // Create the uploads folder if it doesn't exist
+                        if (!is_dir($uploadDir)) {
+                            mkdir($uploadDir, 0777, true);
+                        }
+            
+                        if (move_uploaded_file($imageTmp, $targetPath)) {
+                            $imagePath = $targetPath;
+                        } else {
+                            throw new Exception("Failed to upload image.");
+                        }
+                    } else {
+                        throw new Exception("No image uploaded or upload error.");
+                    }
+            
+                    // === Insert into properties table ===
+                    $stmt = $pdo->prepare("
+                        INSERT INTO properties 
+                        (id, title, image_url, description, price, bedrooms, bathrooms, location, size, year_built) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
                     $stmt->execute([
                         $propertyId,
-                        $_POST['title'],
-                        $_POST['image_url'],
-                        $_POST['description'],
-                        $_POST['price'],
-                        $_POST['bedrooms'],
-                        $_POST['bathrooms'],
-                        $_POST['location'],
-                        $_POST['size'],
-                        $_POST['year_built']
+                        getPostValue('title'),
+                        $imagePath,
+                        getPostValue('description'),
+                        getPostValue('price'),
+                        getPostValue('bedrooms'),
+                        getPostValue('bathrooms'),
+                        getPostValue('location'),
+                        getPostValue('size'),
+                        getPostValue('year_built'),
                     ]);
-
-                    // Insert features
+            
+                    // === Insert features ===
                     if (!empty($_POST['features'])) {
                         $features = array_map('trim', explode(',', $_POST['features']));
                         $stmt = $pdo->prepare("INSERT INTO property_features (property_id, feature) VALUES (?, ?)");
@@ -42,45 +83,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
                         }
                     }
-
+            
                     $pdo->commit();
                 } catch (Exception $e) {
                     $pdo->rollBack();
-                    die("Error: " . $e->getMessage());
+                    die("Add Error: " . $e->getMessage());
                 }
                 break;
 
+            // === EDIT PROPERTY ===
             case 'edit':
                 try {
                     $pdo->beginTransaction();
-                    
-                    // Update property
-                    $stmt = $pdo->prepare("UPDATE properties SET title = ?, image_url = ?, description = ?, price = ?, bedrooms = ?, bathrooms = ?, location = ?, size = ?, year_built = ? WHERE id = ?");
+
+                    $stmt = $pdo->prepare("
+                        UPDATE properties 
+                        SET title = ?, image_url = ?, description = ?, price = ?, bedrooms = ?, bathrooms = ?, location = ?, size = ?, year_built = ? 
+                        WHERE id = ?
+                    ");
+
                     $stmt->execute([
-                        $_POST['title'],
-                        $_POST['image_url'],
-                        $_POST['description'],
-                        $_POST['price'],
-                        $_POST['bedrooms'],
-                        $_POST['bathrooms'],
-                        $_POST['location'],
-                        $_POST['size'],
-                        $_POST['year_built'],
-                        $_POST['id']
+                        getPostValue('title'),
+                        getPostValue('image_url'),
+                        getPostValue('description'),
+                        getPostValue('price'),
+                        getPostValue('bedrooms'),
+                        getPostValue('bathrooms'),
+                        getPostValue('location'),
+                        getPostValue('size'),
+                        getPostValue('year_built'),
+                        getPostValue('id'),
                     ]);
 
-                    // Update features
-                    if (!empty($_POST['features'])) {
-                        // Delete existing features
-                        $stmt = $pdo->prepare("DELETE FROM property_features WHERE property_id = ?");
-                        $stmt->execute([$_POST['id']]);
+                    // Delete old features
+                    $stmt = $pdo->prepare("DELETE FROM property_features WHERE property_id = ?");
+                    $stmt->execute([getPostValue('id')]);
 
-                        // Insert new features
+                    // Insert new features
+                    if (!empty($_POST['features'])) {
                         $features = array_map('trim', explode(',', $_POST['features']));
                         $stmt = $pdo->prepare("INSERT INTO property_features (property_id, feature) VALUES (?, ?)");
                         foreach ($features as $feature) {
                             if (!empty($feature)) {
-                                $stmt->execute([$_POST['id'], $feature]);
+                                $stmt->execute([getPostValue('id'), $feature]);
                             }
                         }
                     }
@@ -88,29 +133,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo->commit();
                 } catch (Exception $e) {
                     $pdo->rollBack();
-                    die("Error: " . $e->getMessage());
+                    die("Edit Error: " . $e->getMessage());
                 }
                 break;
 
+            // === DELETE PROPERTY ===
             case 'delete':
                 try {
                     $pdo->beginTransaction();
-                    
-                    // Delete features first (due to foreign key constraint)
+
                     $stmt = $pdo->prepare("DELETE FROM property_features WHERE property_id = ?");
-                    $stmt->execute([$_POST['id']]);
-                    
-                    // Delete property
+                    $stmt->execute([getPostValue('id')]);
+
                     $stmt = $pdo->prepare("DELETE FROM properties WHERE id = ?");
-                    $stmt->execute([$_POST['id']]);
-                    
+                    $stmt->execute([getPostValue('id')]);
+
                     $pdo->commit();
                 } catch (Exception $e) {
                     $pdo->rollBack();
-                    die("Error: " . $e->getMessage());
+                    die("Delete Error: " . $e->getMessage());
                 }
                 break;
         }
+
+        // Redirect after successful action
         header('Location: manage_properties.php');
         exit();
     }
@@ -143,16 +189,16 @@ $properties = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="card mb-5">
             <div class="card-body">
                 <h5 class="card-title">Add New Property</h5>
-                <form method="POST">
+                <form method="POST" enctype="multipart/form-data" action="manage_properties.php">
                     <input type="hidden" name="action" value="add">
                     <div class="mb-3">
                         <label for="title" class="form-label">Title</label>
                         <input type="text" class="form-control" id="title" name="title" required>
                     </div>
                     <div class="mb-3">
-                        <label for="image_url" class="form-label">Image URL</label>
-                        <input type="url" class="form-control" id="image_url" name="image_url" required>
-                    </div>
+        <label for="image_file" class="form-label">Property Image</label>
+        <input type="file" name="image" accept="image/*" required>
+    </div>
                     <div class="mb-3">
                         <label for="description" class="form-label">Description</label>
                         <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
@@ -256,17 +302,18 @@ $properties = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form method="POST" id="editForm">
+                <form method="POST" id="editForm" enctype="multipart/form-data">
+
                         <input type="hidden" name="action" value="edit">
                         <input type="hidden" name="id" id="edit_id">
                         <div class="mb-3">
                             <label for="edit_title" class="form-label">Title</label>
                             <input type="text" class="form-control" id="edit_title" name="title" required>
                         </div>
-                        <div class="mb-3">
-                            <label for="edit_image_url" class="form-label">Image URL</label>
-                            <input type="url" class="form-control" id="edit_image_url" name="image_url" required>
-                        </div>
+                        <!-- <input type="file" class="form-control" id="edit_image_file" name="image_file" accept="image/*">
+<small class="form-text text-muted">Leave empty to keep the current image.</small>
+
+<img id="imagePreview" src="" alt="Current Image" style="width: 100px; margin-bottom: 10px;"> -->
                         <div class="mb-3">
                             <label for="edit_description" class="form-label">Description</label>
                             <textarea class="form-control" id="edit_description" name="description" rows="3" required></textarea>
@@ -327,7 +374,6 @@ $properties = $stmt->fetchAll(PDO::FETCH_ASSOC);
         function editProperty(property) {
             document.getElementById('edit_id').value = property.id;
             document.getElementById('edit_title').value = property.title;
-            document.getElementById('edit_image_url').value = property.image_url;
             document.getElementById('edit_description').value = property.description;
             document.getElementById('edit_price').value = property.price;
             document.getElementById('edit_bedrooms').value = property.bedrooms;

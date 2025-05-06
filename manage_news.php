@@ -10,19 +10,81 @@ if (!isset($_SESSION['admin'])) {
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $image_name = ''; // Initialize image name variable
+
+    // --- Handle Image Upload ---
+    // Check if a file was uploaded for add or edit
+    if (isset($_FILES['image_file']) && $_FILES['image_file']['error'] === UPLOAD_ERR_OK) {
+        $target_dir = "images/"; // Make sure this directory exists and is writable
+        // Create directory if it doesn't exist
+        if (!is_dir($target_dir)) {
+            mkdir($target_dir, 0777, true);
+        }
+
+        $file_extension = pathinfo($_FILES["image_file"]["name"], PATHINFO_EXTENSION);
+        // Generate a unique name to prevent overwriting
+        $image_name = uniqid('news_') . '.' . $file_extension;
+        $target_file = $target_dir . $image_name;
+
+        // Attempt to move the uploaded file
+        if (!move_uploaded_file($_FILES["image_file"]["tmp_name"], $target_file)) {
+            // Handle upload error (e.g., display message, log error)
+            echo "Error uploading file."; // Simple error message
+            $image_name = ''; // Reset image name if upload failed
+        }
+    }
+    // --- End Handle Image Upload ---
+
     if (isset($_POST['action'])) {
         switch ($_POST['action']) {
             case 'add':
-                $stmt = $pdo->prepare("INSERT INTO news (title, image_url, content) VALUES (?, ?, ?)");
-                $stmt->execute([$_POST['title'], $_POST['image_url'], $_POST['content']]);
+                // Only proceed if title, content are set and image upload was successful (or not required)
+                // Assuming image is required for adding news
+                if (!empty($_POST['title']) && !empty($_POST['content']) && !empty($image_name)) {
+                    $stmt = $pdo->prepare("INSERT INTO news (title, image_url, content) VALUES (?, ?, ?)");
+                    $stmt->execute([$_POST['title'], $image_name, $_POST['content']]);
+                } else if (empty($image_name) && isset($_FILES['image_file']) && $_FILES['image_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+                    // Image upload failed, but was attempted
+                    echo "Failed to add news due to image upload issue.";
+                } else {
+                     echo "Title, Content, and Image are required to add news.";
+                }
                 break;
+
             case 'edit':
-                $stmt = $pdo->prepare("UPDATE news SET title = ?, image_url = ?, content = ? WHERE id = ?");
-                $stmt->execute([$_POST['title'], $_POST['image_url'], $_POST['content'], $_POST['id']]);
+                // If a new image was uploaded, update the image_url field
+                if ($image_name !== '') {
+                    // Optional: Delete old image file before updating DB
+                    $stmt_old = $pdo->prepare("SELECT image_url FROM news WHERE id = ?");
+                    $stmt_old->execute([$_POST['id']]);
+                    $old_image = $stmt_old->fetchColumn();
+                    if ($old_image && file_exists("images/" . $old_image)) {
+                        @unlink("images/" . $old_image); // Suppress error if file not found
+                    }
+
+                    $stmt = $pdo->prepare("UPDATE news SET title = ?, image_url = ?, content = ? WHERE id = ?");
+                    $stmt->execute([$_POST['title'], $image_name, $_POST['content'], $_POST['id']]);
+                } else {
+                    // If no new image, update only title and content
+                    $stmt = $pdo->prepare("UPDATE news SET title = ?, content = ? WHERE id = ?");
+                    $stmt->execute([$_POST['title'], $_POST['content'], $_POST['id']]);
+                }
                 break;
+
             case 'delete':
-                $stmt = $pdo->prepare("DELETE FROM news WHERE id = ?");
-                $stmt->execute([$_POST['id']]);
+                // First, get the image filename to delete the file
+                $stmt_img = $pdo->prepare("SELECT image_url FROM news WHERE id = ?");
+                $stmt_img->execute([$_POST['id']]);
+                $image_to_delete = $stmt_img->fetchColumn();
+
+                // Delete the database record
+                $stmt = $pdo->prepare("INSERT INTO news (title, image_url, content) VALUES (?, ?, ?)");
+                if ($stmt->execute([$_POST['id']])) {
+                    // If DB deletion is successful, delete the image file
+                    if ($image_to_delete && file_exists("images/" . $image_to_delete)) {
+                        @unlink("images/" . $image_to_delete); // Use @ to suppress errors if file not found
+                    }
+                }
                 break;
         }
         header('Location: manage_news.php');
@@ -51,15 +113,15 @@ $news = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="card mb-5">
             <div class="card-body">
                 <h5 class="card-title">Add New News</h5>
-                <form method="POST">
+                <form method="POST" enctype="multipart/form-data"> {/* Added enctype */}
                     <input type="hidden" name="action" value="add">
                     <div class="mb-3">
                         <label for="title" class="form-label">Title</label>
                         <input type="text" class="form-control" id="title" name="title" required>
                     </div>
                     <div class="mb-3">
-                        <label for="image_url" class="form-label">Image URL</label>
-                        <input type="url" class="form-control" id="image_url" name="image_url" required>
+                        <label for="image_file" class="form-label">Image File</label>
+                        <input type="file" class="form-control" id="image_file" name="image_file" accept="image/*" required> {/* Changed input type */}
                     </div>
                     <div class="mb-3">
                         <label for="content" class="form-label">Content</label>
@@ -89,7 +151,13 @@ $news = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <?php foreach ($news as $item): ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($item['title']); ?></td>
-                                <td><img src="<?php echo htmlspecialchars($item['image_url']); ?>" alt="" style="width: 100px;"></td>
+                                <td>
+                                    <?php if (!empty($item['image_url']) && file_exists("images/" . $item['image_url'])): ?>
+                                        <img src="images/<?php echo htmlspecialchars($item['image_url']); ?>" alt="<?php echo htmlspecialchars($item['title']); ?>" style="width: 100px; height: auto;">
+                                    <?php else: ?>
+                                        <small>No Image</small>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?php echo htmlspecialchars($item['content']); ?></td>
                                 <td><?php echo $item['created_at']; ?></td>
                                 <td>
@@ -118,7 +186,7 @@ $news = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form method="POST" id="editForm">
+                    <form method="POST" id="editForm" enctype="multipart/form-data"> {/* Added enctype */}
                         <input type="hidden" name="action" value="edit">
                         <input type="hidden" name="id" id="edit_id">
                         <div class="mb-3">
@@ -126,8 +194,9 @@ $news = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <input type="text" class="form-control" id="edit_title" name="title" required>
                         </div>
                         <div class="mb-3">
-                            <label for="edit_image_url" class="form-label">Image URL</label>
-                            <input type="url" class="form-control" id="edit_image_url" name="image_url" required>
+                            <label for="edit_image_file" class="form-label">Upload New Image (Optional)</label>
+                            <input type="file" class="form-control" id="edit_image_file" name="image_file" accept="image/*"> {/* Changed input type */}
+                            <small class="form-text text-muted">Leave empty to keep the current image.</small>
                         </div>
                         <div class="mb-3">
                             <label for="edit_content" class="form-label">Content</label>
@@ -145,7 +214,7 @@ $news = $stmt->fetchAll(PDO::FETCH_ASSOC);
         function editNews(news) {
             document.getElementById('edit_id').value = news.id;
             document.getElementById('edit_title').value = news.title;
-            document.getElementById('edit_image_url').value = news.image_url;
+            // Cannot set value for file input, user must select new file if they want to change it.
             document.getElementById('edit_content').value = news.content;
             new bootstrap.Modal(document.getElementById('editModal')).show();
         }
